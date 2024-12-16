@@ -1,9 +1,10 @@
 package at.ac.fhcampuswien.snake;
 
+import java.io.IOException;
+
 import at.ac.fhcampuswien.snake.util.StateManager;
 import javafx.application.Application;
 import javafx.stage.Stage;
-import java.io.IOException;
 
 public class SnakeApp extends Application {
 
