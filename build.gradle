@@ -22,7 +22,7 @@ dependencies {
 application {
     mainClass = 'at.ac.fhcampuswien.snake.SnakeApp'
     applicationDefaultJvmArgs = [
-            "--module-path", "C:/Users/a904534/Projekts/snake/javafx-sdk-23.0.1/lib",
+            "--module-path", "C:/Users/a904534/Projekts/snake/javafx-sdk-17.0.13/lib",
             "--add-modules", "javafx.controls,javafx.fxml"
     ]
 }
