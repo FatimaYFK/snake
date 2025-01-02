@@ -13,4 +13,6 @@ module at.ac.fhcampuswien.snake {
     opens at.ac.fhcampuswien.snake.util to javafx.fxml;
     exports at.ac.fhcampuswien.snake.board;
     opens at.ac.fhcampuswien.snake.board to javafx.fxml;
+    exports at.ac.fhcampuswien.snake.manager;
+    opens at.ac.fhcampuswien.snake.manager to javafx.fxml;
 }
