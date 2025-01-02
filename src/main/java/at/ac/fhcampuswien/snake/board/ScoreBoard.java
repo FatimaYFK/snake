@@ -1,62 +1,82 @@
 package at.ac.fhcampuswien.snake.board;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.VPos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
-import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
+import javafx.util.Duration;
 
 import static at.ac.fhcampuswien.snake.util.Constants.*;
 
+/**
+ * Represents the scoreboard and countdown timer in the Snake game.
+ */
 public class ScoreBoard {
     private final GraphicsContext gc;
 
+    /**
+     * Initializes the ScoreBoard with the provided canvas.
+     *
+     * @param scoreBoardCanvas Canvas to draw the scoreboard and timer.
+     */
     public ScoreBoard(Canvas scoreBoardCanvas) {
         this.gc = scoreBoardCanvas.getGraphicsContext2D();
     }
 
+    /**
+     * Draws the current score on the scoreboard.
+     *
+     * @param score The current score to display.
+     */
     public void drawScoreBoard(int score) {
-        this.gc.setFill(Color.web("4a148c"));
-        this.gc.fillRect(0, 0, SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT);
+        gc.setFill(Color.web("4a148c"));
+        gc.fillRect(0, 0, SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT);
+
         gc.setTextAlign(TextAlignment.RIGHT);
         gc.setTextBaseline(VPos.CENTER);
-        this.gc.setFill(Color.WHITE);
-        this.gc.setFont(Font.font("Courier", OBJECT_SIZE_MEDIUM));
-        this.gc.fillText("Score: " + score, SCOREBOARD_WIDTH - 7, SCOREBOARD_HEIGHT / 2);
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Courier", OBJECT_SIZE_MEDIUM));
+
+        gc.fillText("Score: " + score, SCOREBOARD_WIDTH - 7, SCOREBOARD_HEIGHT / 2);
     }
 
+    /**
+     * Draws a countdown timer on the scoreboard.
+     * Replaces the Thread-based implementation with a Timeline for better integration with JavaFX.
+     */
     public void drawCountdownTimer() {
-        int duration = 3;
-        Text timerText = new Text(10, 20, Integer.toString(duration));
+        final int duration = 3;
 
-        Thread timerThread = new Thread(() -> {
-            for (int i = duration; i >= 0; i--) {
-                int finalI = i;
-                Platform.runLater(() -> {
-                    this.gc.setFill(Color.web("4a148c"));
-                    this.gc.fillRect(0, 0, SCOREBOARD_WIDTH / 2, SCOREBOARD_HEIGHT);
-                    if (finalI > 0) {
-                        this.gc.setTextAlign(TextAlignment.LEFT);
-                        this.gc.setTextBaseline(VPos.CENTER);
-                        this.gc.setFill(Color.WHITE);
-                        this.gc.setFont(Font.font("Courier", OBJECT_SIZE_MEDIUM));
+        Timeline countdownTimeline = new Timeline();
+        countdownTimeline.setCycleCount(duration + 1);
 
-                        timerText.setText("Starting in: " + finalI);
-                        this.gc.fillText(timerText.getText(), 7, SCOREBOARD_HEIGHT / 2);
-                    }
-                });
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+        for (int i = duration; i >= 0; i--) {
+            final int currentSecond = i;
+            KeyFrame keyFrame = new KeyFrame(Duration.seconds(duration - i), event -> {
+                gc.setFill(Color.web("4a148c"));
+                gc.fillRect(0, 0, SCOREBOARD_WIDTH / 2, SCOREBOARD_HEIGHT);
+
+                if (currentSecond > 0) {
+                    gc.setTextAlign(TextAlignment.LEFT);
+                    gc.setTextBaseline(VPos.CENTER);
+                    gc.setFill(Color.WHITE);
+                    gc.setFont(Font.font("Courier", OBJECT_SIZE_MEDIUM));
+
+                    String timerText = "Starting in: " + currentSecond;
+                    gc.fillText(timerText, 7, SCOREBOARD_HEIGHT / 2);
+                } else {
+                    // Optionally, you can clear the timer or perform another action when countdown finishes
+                    gc.clearRect(0, 0, SCOREBOARD_WIDTH / 2, SCOREBOARD_HEIGHT);
                 }
-            }
-        });
+            });
+            countdownTimeline.getKeyFrames().add(keyFrame);
+        }
 
-        timerThread.start();
+        countdownTimeline.play();
     }
-
 }

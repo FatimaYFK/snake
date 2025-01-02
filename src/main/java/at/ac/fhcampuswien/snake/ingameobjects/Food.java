@@ -37,6 +37,7 @@ public class Food {
      * It checks for collisions with the SNAKE Object.
      * By random there will also be a FoodType assigned.
      */
+
     public Food(Snake snake, Wall wall, Food currentlyExistingRegularFood,
                 boolean isSpecialFood, String previousFoodType) {
         int scoreValueMultiplierBasedOnDifficulty;
