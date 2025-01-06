@@ -1,6 +1,7 @@
 package at.ac.fhcampuswien.snake.manager;
 
 import at.ac.fhcampuswien.snake.ingameobjects.Food;
+import at.ac.fhcampuswien.snake.ingameobjects.SpecialFood;
 import at.ac.fhcampuswien.snake.ingameobjects.Snake;
 import at.ac.fhcampuswien.snake.ingameobjects.Wall;
 import org.slf4j.Logger;
@@ -52,7 +53,7 @@ public class FoodManager {
      * Generates a regular food item.
      */
     public void generateRegularFood() {
-        this.regularFood = new Food(snake, innerWall, null, false, previousRegularFoodType);
+        this.regularFood = new Food(snake, innerWall, null, previousRegularFoodType);
         this.previousRegularFoodType = regularFood.getFoodType();
     }
 
@@ -60,7 +61,7 @@ public class FoodManager {
      * Generates a special food item.
      */
     public void generateSpecialFood() {
-        this.specialFood = new Food(snake, innerWall, regularFood, true, previousSpecialFoodType);      //MM20250106: When time, make separate derived class for special food
+        this.specialFood = new SpecialFood(snake, innerWall, regularFood, previousSpecialFoodType);      //MM20250106: When time, make separate derived class for special food
         this.previousSpecialFoodType = specialFood.getFoodType();
     }
 
