@@ -100,7 +100,7 @@ public class GameBoard {
      * Starts a new game and a timer to refresh the game board.
      */
     public void startGame() {
-        pauseManager.pauseGame(() -> timeline.play());
+        pauseManager.pauseGame(timeline::play);
 
         initializeBoardObjects();
         initializeEvents();
@@ -114,7 +114,7 @@ public class GameBoard {
         SoundFX.playIntroSound();
 
         timeline.pause();
-        pauseManager.pauseGame(() -> timeline.play());
+        pauseManager.pauseGame(timeline::play);
     }
 
     /**
@@ -149,7 +149,7 @@ public class GameBoard {
                 LOG.error("Error switching to the GameOver view", ex);
             }
         } else {
-            pauseManager.pauseGame(() -> timeline.play());
+            pauseManager.pauseGame(timeline::play);
         }
     }
 
@@ -271,16 +271,12 @@ public class GameBoard {
      * @return Image of the snake's head
      */
     private Image getSnakeHeadImage() {
-        switch (snake.getDirection()) {
-            case RIGHT:
-                return snakeHeadRight;
-            case DOWN:
-                return snakeHeadDown;
-            case LEFT:
-                return snakeHeadLeft;
-            default:
-                return snakeHeadUp;
-        }
+        return switch (snake.getDirection()) {
+            case RIGHT -> snakeHeadRight;
+            case DOWN -> snakeHeadDown;
+            case LEFT -> snakeHeadLeft;
+            default -> snakeHeadUp;
+        };
     }
 
     // Füge die folgende Methode hinzu oder passe die vorhandene an
