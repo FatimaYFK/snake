@@ -18,7 +18,7 @@ import static at.ac.fhcampuswien.snake.util.Constants.HIGHSCORE_BOARD_NAME_COL_W
 import static at.ac.fhcampuswien.snake.util.Constants.HIGHSCORE_BOARD_SCORE_COL_WIDTH;
 
 public class HighscoreBoard {
-
+    @SuppressWarnings("unchecked")
     public HighscoreBoard(VBox vBox) {
         TableView<Player> table = new TableView<>();
         vBox.setMaxHeight(HIGHSCORE_BOARD_HEIGHT);
