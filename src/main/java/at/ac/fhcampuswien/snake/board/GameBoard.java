@@ -7,6 +7,8 @@ import at.ac.fhcampuswien.snake.ingameobjects.Wall;
 import at.ac.fhcampuswien.snake.manager.FoodManager;
 import at.ac.fhcampuswien.snake.manager.PauseManager;
 import at.ac.fhcampuswien.snake.service.HighscoreService;
+import at.ac.fhcampuswien.snake.util.Constants.Difficulty;
+import at.ac.fhcampuswien.snake.util.Constants.Direction;
 import at.ac.fhcampuswien.snake.util.Player;
 import at.ac.fhcampuswien.snake.util.SoundFX;
 import at.ac.fhcampuswien.snake.util.StateManager;
@@ -27,7 +29,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
 
 import static at.ac.fhcampuswien.snake.util.Constants.Direction.*;
 import static at.ac.fhcampuswien.snake.util.Constants.*;
@@ -83,7 +89,8 @@ public class GameBoard {
         this.snakeBody = new Image("graphics/snake/body.png");
         this.wallPattern = new Image("graphics/wall/wall_pattern.png");
 
-        this.timeline = new Timeline(new KeyFrame(Duration.millis(difficulty.getRefreshTime()), e -> refreshGameBoard()));
+        this.timeline = new Timeline(
+                new KeyFrame(Duration.millis(difficulty.getRefreshTime()), e -> refreshGameBoard()));
         this.timeline.setCycleCount(Animation.INDEFINITE);
 
         this.pauseManager = new PauseManager();
@@ -168,7 +175,8 @@ public class GameBoard {
     private Wall generateRandomWall() {
         Random rand = new Random();
         int wallLength = rand.nextInt(5);
-        if (wallLength == 0) return null;
+        if (wallLength == 0)
+            return null;
 
         int randomX = getRandomWallPosition(rand, wallLength, true);
         int randomY = getRandomWallPosition(rand, wallLength, false);
@@ -179,8 +187,8 @@ public class GameBoard {
     /**
      * Generates a random position for a wall.
      *
-     * @param rand        Random instance
-     * @param wallLength  Length of the wall
+     * @param rand         Random instance
+     * @param wallLength   Length of the wall
      * @param isHorizontal Determines if the wall is horizontal
      * @return a valid random position
      */
@@ -232,9 +240,11 @@ public class GameBoard {
      * @param food The food item to draw
      */
     private void drawFood(GraphicsContext gc, Food food) {
-        if (food == null) return;
+        if (food == null)
+            return;
         Image foodImg = new Image("graphics/food/" + food.getFoodType());
-        gc.drawImage(foodImg, food.getLocation().getX(), food.getLocation().getY(), OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM);
+        gc.drawImage(foodImg, food.getLocation().getX(), food.getLocation().getY(), OBJECT_SIZE_MEDIUM,
+                OBJECT_SIZE_MEDIUM);
     }
 
     /**
@@ -282,7 +292,8 @@ public class GameBoard {
      * @return true, wenn der Schlange auf dem Essen ist, sonst false.
      */
     private boolean checkIfSnakeHeadIsOnFood(Food food) {
-        if (food == null) return false;
+        if (food == null)
+            return false;
         Position snakeHead = snake.getSegments().get(0);
         Position foodPos = food.getLocation();
         boolean isCollision = snakeHead.equals(foodPos);
@@ -302,9 +313,9 @@ public class GameBoard {
      */
     private void drawWalls(GraphicsContext gc) {
         drawPerimeterWalls(gc);
-        if (innerWall != null) drawInnerWalls(gc);
+        if (innerWall != null)
+            drawInnerWalls(gc);
     }
-
 
     /**
      * Draws the perimeter walls.
@@ -314,9 +325,11 @@ public class GameBoard {
     private void drawPerimeterWalls(GraphicsContext gc) {
         for (int i = 0; i < GAME_BOARD_SIZE_MEDIUM; i += OBJECT_SIZE_MEDIUM) {
             gc.drawImage(wallPattern, i, 0, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM); // Upper
-            gc.drawImage(wallPattern, i, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM); // Bottom
+            gc.drawImage(wallPattern, i, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM,
+                    OBJECT_SIZE_MEDIUM); // Bottom
             gc.drawImage(wallPattern, 0, i, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM); // Left
-            gc.drawImage(wallPattern, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM, i, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM); // Right
+            gc.drawImage(wallPattern, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM, i, OBJECT_SIZE_MEDIUM,
+                    OBJECT_SIZE_MEDIUM); // Right
         }
     }
 
@@ -354,6 +367,7 @@ public class GameBoard {
                     }
                 }
                 case ESCAPE -> handleEscape();
+                default -> throw new IllegalArgumentException("Unexpected value: " + event.getCode());
             }
         });
     }
@@ -449,10 +463,12 @@ public class GameBoard {
      */
     private void displayPausedState() {
         gc.setFill(Color.WHITE);
-        gc.fillRect(OBJECT_SIZE_MEDIUM * 0.3, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * 0.9, OBJECT_SIZE_MEDIUM * 2.7, OBJECT_SIZE_MEDIUM * 0.8);
+        gc.fillRect(OBJECT_SIZE_MEDIUM * 0.3, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * 0.9,
+                OBJECT_SIZE_MEDIUM * 2.7, OBJECT_SIZE_MEDIUM * 0.8);
         gc.setFont(new Font(OBJECT_SIZE_MEDIUM * 0.6));
         gc.setFill(Color.BLACK);
-        gc.fillText("Paused!", OBJECT_SIZE_MEDIUM * 0.6, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * 0.3, GAME_BOARD_SIZE_MEDIUM);
+        gc.fillText("Paused!", OBJECT_SIZE_MEDIUM * 0.6, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * 0.3,
+                GAME_BOARD_SIZE_MEDIUM);
     }
 
     /**
