@@ -5,13 +5,7 @@ import at.ac.fhcampuswien.snake.ingameobjects.Snake;
 import at.ac.fhcampuswien.snake.ingameobjects.Wall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Comparator;
-import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
-
-import static at.ac.fhcampuswien.snake.util.Constants.*;
 
 /**
  * Manages the creation and handling of food items in the game.
