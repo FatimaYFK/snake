@@ -1,11 +1,18 @@
 package at.ac.fhcampuswien.snake.manager;
 
 import at.ac.fhcampuswien.snake.ingameobjects.Food;
+import at.ac.fhcampuswien.snake.ingameobjects.SpecialFood;
 import at.ac.fhcampuswien.snake.ingameobjects.Snake;
 import at.ac.fhcampuswien.snake.ingameobjects.Wall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Comparator;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+
+import static at.ac.fhcampuswien.snake.util.Constants.*;
 
 /**
  * Manages the creation and handling of food items in the game.
@@ -39,14 +46,14 @@ public class FoodManager {
      * @return random integer between 5 and 10.
      */
     private int getRandomFoodsToEat() {
-        return 5 + new Random().nextInt(6); // 5 to 10
+        return 5 + new Random().nextInt(6); // 5 to 10      //MM20250106: magic number '5'!!!
     }
 
     /**
      * Generates a regular food item.
      */
     public void generateRegularFood() {
-        this.regularFood = new Food(snake, innerWall, null, false, previousRegularFoodType);
+        this.regularFood = new Food(snake, innerWall, null, previousRegularFoodType);
         this.previousRegularFoodType = regularFood.getFoodType();
     }
 
@@ -54,7 +61,7 @@ public class FoodManager {
      * Generates a special food item.
      */
     public void generateSpecialFood() {
-        this.specialFood = new Food(snake, innerWall, regularFood, true, previousSpecialFoodType);
+        this.specialFood = new SpecialFood(snake, innerWall, regularFood, previousSpecialFoodType);
         this.previousSpecialFoodType = specialFood.getFoodType();
     }
 

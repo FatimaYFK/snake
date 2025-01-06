@@ -95,4 +95,5 @@ public class StateManager {
             gameBoard.stopAnimation();
         }
     }
+
 }
