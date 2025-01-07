@@ -178,10 +178,10 @@ public class GameBoard {
         if (wallLength == 0)
             return null;
 
-        int randomX = getRandomWallPosition(rand, wallLength, true);
-        int randomY = getRandomWallPosition(rand, wallLength, false);
+        final Position pos  = new Position(getRandomWallPosition(rand, wallLength, true),
+                                           getRandomWallPosition(rand, wallLength, false));
 
-        return new Wall(rand.nextBoolean(), randomX, randomY, wallLength);
+        return new Wall(rand.nextBoolean(), pos, wallLength);
     }
 
     /**
