@@ -483,7 +483,6 @@ public class GameBoard {
             if (checkIfSnakeHeadIsOnFood(special)) {
                 snake.eats(special);
                 score += special.getScoreValue();
-                foodManager.handleFoodConsumption(special.getScoreValue());
                 StateManager.getScoreBoard().drawScoreBoard(this.getScore());
                 foodManager.resetSpecialFood();
             } else {

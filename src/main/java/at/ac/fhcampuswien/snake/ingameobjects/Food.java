@@ -61,19 +61,18 @@ public class Food {
 
     Position calculateFreeRandomPositionOnGameBoard(Snake snake, Wall wall, Food currentlyExistingRegularFood) {
         boolean isTargetFieldFree;
+        Position currentPosition;
+
         do {
             isTargetFieldFree = true;
-
-            final Position currentPosition = new Position();
+            currentPosition = new Position();
 
             // Check if calculated Position is inhibited by the snake
             int i = 0;
             do {
                 if (snake.getSegments().get(i).equals(currentPosition)) {
                     isTargetFieldFree = false;
-                    return currentPosition;
                 }
-
                 i++;
             } while (isTargetFieldFree && i < snake.getSegments().size());
 
@@ -83,7 +82,6 @@ public class Food {
                 do {
                     if (wall.getSegments().get(j).equals(currentPosition)) {
                         isTargetFieldFree = false;
-                        return currentPosition;
                     }
                     j++;
                 } while (isTargetFieldFree && j < wall.getSegments().size());
@@ -93,12 +91,12 @@ public class Food {
             if (isSpecialFood() && currentlyExistingRegularFood != null && isTargetFieldFree) {
                 if (currentlyExistingRegularFood.position.equals(currentPosition)) {
                     isTargetFieldFree = false;
-                    return currentPosition;
                 }
             }
+
         } while (!isTargetFieldFree);
 
-        return new Position();
+        return currentPosition;
     }
 
     int translateIntoFoodValue(Constants.Difficulty difficulty) {
