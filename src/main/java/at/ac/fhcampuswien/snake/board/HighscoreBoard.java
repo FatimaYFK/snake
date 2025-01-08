@@ -18,7 +18,7 @@ import static at.ac.fhcampuswien.snake.util.Constants.HIGHSCORE_BOARD_NAME_COL_W
 import static at.ac.fhcampuswien.snake.util.Constants.HIGHSCORE_BOARD_SCORE_COL_WIDTH;
 
 public class HighscoreBoard {
-
+    @SuppressWarnings("unchecked")
     public HighscoreBoard(VBox vBox) {
         TableView<Player> table = new TableView<>();
         vBox.setMaxHeight(HIGHSCORE_BOARD_HEIGHT);
@@ -30,9 +30,9 @@ public class HighscoreBoard {
         nameCol.setSortable(false);
         nameCol.setReorderable(false);
 
-        TableColumn<Player, String> scoreCol = new TableColumn<>("Score");
+        TableColumn<Player, Integer> scoreCol = new TableColumn<>("Score");
         scoreCol.setCellValueFactory(new PropertyValueFactory<>("score"));
-        scoreCol.setMinWidth((HIGHSCORE_BOARD_SCORE_COL_WIDTH));
+        scoreCol.setMinWidth(HIGHSCORE_BOARD_SCORE_COL_WIDTH);
         scoreCol.setSortable(false);
         scoreCol.setReorderable(false);
 
@@ -48,6 +48,5 @@ public class HighscoreBoard {
 
         table.setItems(data);
         table.getColumns().addAll(nameCol, scoreCol);
-
     }
 }

@@ -1,7 +1,8 @@
 plugins {
     id 'java'
-    id "org.openjfx.javafxplugin" version "0.0.9"
+    id "org.openjfx.javafxplugin" version "0.0.13"
     id 'maven-publish'
+    id 'application'
 }
 
 repositories {
@@ -10,10 +11,13 @@ repositories {
         url = uri('https://repo.maven.apache.org/maven2/')
     }
 }
+application {
+    mainClass = 'at.ac.fhcampuswien.snake.SnakeApp'
+}
 
 dependencies {
-    implementation 'org.openjfx:javafx-controls:17.0.2'
-    implementation 'org.openjfx:javafx-fxml:17.0.2'
+    implementation 'org.openjfx:javafx-controls:17.0.13'
+    implementation 'org.openjfx:javafx-fxml:17.0.13'
     implementation 'org.slf4j:slf4j-simple:2.0.5'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
@@ -30,6 +34,6 @@ tasks.withType(JavaCompile) {
 }
 
 javafx {
-    version = "17"                  // JavaFX Version
+    version = "17.0.13"                  // JavaFX Version
     modules = [ "javafx.controls", "javafx.fxml", "javafx.media" ] // JavaFX modules. Add them to this array.
 }

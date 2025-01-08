@@ -13,19 +13,17 @@ public class Wall {
      * This Constructor creates a wall with a specified length
      * It requires the orientation, the length and the starting points
      *
-     * @param isHorizontal      specifies if the horizontal or not. Depending on this, one of the coordinates is constant.
-     * @param startingPositionX The starting point of the wall on the X axis.
-     * @param startingPositionY The starting point of the wall on the Y axis.
+     * @param isHorizontal      specifies if the wall is horizontal or not. Depending on this, one of the coordinates is constant.
      * @param length            The length of the wall
      */
-    public Wall(boolean isHorizontal, int startingPositionX, int startingPositionY, int length) {
+    public Wall(boolean isHorizontal, Position startingPosition, int length) {
         if (isHorizontal) {
             for (int i = 0; i < length; i++) {
-                segments.add(new Position(startingPositionX + i * OBJECT_SIZE_MEDIUM, startingPositionY));
+                segments.add(new Position(startingPosition.getX() + i * OBJECT_SIZE_MEDIUM, startingPosition.getY()));
             }
         } else {
             for (int i = 0; i < length; i++) {
-                segments.add(new Position(startingPositionX, startingPositionY + i * OBJECT_SIZE_MEDIUM));
+                segments.add(new Position(startingPosition.getX(), startingPosition.getY() + i * OBJECT_SIZE_MEDIUM));
             }
         }
     }

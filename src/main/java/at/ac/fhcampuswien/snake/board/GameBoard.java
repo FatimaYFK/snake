@@ -4,13 +4,16 @@ import at.ac.fhcampuswien.snake.ingameobjects.Food;
 import at.ac.fhcampuswien.snake.ingameobjects.Position;
 import at.ac.fhcampuswien.snake.ingameobjects.Snake;
 import at.ac.fhcampuswien.snake.ingameobjects.Wall;
+import at.ac.fhcampuswien.snake.manager.FoodManager;
+import at.ac.fhcampuswien.snake.manager.PauseManager;
 import at.ac.fhcampuswien.snake.service.HighscoreService;
+import at.ac.fhcampuswien.snake.util.Constants.Difficulty;
+import at.ac.fhcampuswien.snake.util.Constants.Direction;
 import at.ac.fhcampuswien.snake.util.Player;
 import at.ac.fhcampuswien.snake.util.SoundFX;
 import at.ac.fhcampuswien.snake.util.StateManager;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
-import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.scene.canvas.Canvas;
@@ -26,83 +29,52 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
 
 import static at.ac.fhcampuswien.snake.util.Constants.Direction.*;
 import static at.ac.fhcampuswien.snake.util.Constants.*;
 
+/**
+ * Represents the game board where the Snake game is played.
+ */
 public class GameBoard {
 
     private final static Logger LOG = LoggerFactory.getLogger(GameBoard.class);
 
     private final GraphicsContext gc;
-    /**
-     * The canvas that is used to display the game board.
-     */
     private final Canvas gameBoardCanvas;
-
-    /**
-     * The class used for animations in the game
-     */
     private final Timeline timeline;
+    private final PauseManager pauseManager;
 
-    /**
-     * This pause will be used when the snake dies and the soundFX is playing
-     */
-    private final PauseTransition pause = new PauseTransition(Duration.seconds(3));
-
-    /**
-     * Indicates whether the game is paused or not.
-     */
     private boolean isGamePaused = false;
 
-    /**
-     * The snake, lol
-     */
     private Snake snake;
-    private Food regularFood;
-    private Food specialFood;
-
-    private String previousRegularFoodType;
-    private String previousSpecialFoodType;
-
-    private int foodsEatenSinceLastSpecialFood;
-    private int foodsToEatUntilNextSpecialFood;
-
-    /**
-     * An inner wall that may appear random inside the game area at the start of the game, to make our lives harder
-     */
     private Wall innerWall;
+    private FoodManager foodManager;
 
-    /**
-     * The score of the current game.
-     */
     private int score;
+    private Food regularFood;
 
     public int getScore() {
         return score;
     }
 
-    /**
-     * Image containing the snake's head
-     */
     private final Image snakeHeadUp;
     private final Image snakeHeadDown;
     private final Image snakeHeadLeft;
     private final Image snakeHeadRight;
-
     private final Image snakeBody;
-
-    /**
-     * Image containing the wall pattern
-     */
     private final Image wallPattern;
 
     /**
      * Constructor for GameBoard.
-     * Requests focus for the game board, so that key events get recognized.
      *
      * @param gameBoardCanvas Canvas to draw on
+     * @param difficulty      Game difficulty level
      */
     public GameBoard(Canvas gameBoardCanvas, Difficulty difficulty) {
         this.gameBoardCanvas = gameBoardCanvas;
@@ -117,35 +89,32 @@ public class GameBoard {
         this.snakeBody = new Image("graphics/snake/body.png");
         this.wallPattern = new Image("graphics/wall/wall_pattern.png");
 
-        timeline = new Timeline(new KeyFrame(Duration.millis(difficulty.getRefreshTime()), e -> refreshGameBoard()));
-        timeline.setCycleCount(Animation.INDEFINITE);
+        this.timeline = new Timeline(
+                new KeyFrame(Duration.millis(difficulty.getRefreshTime()), e -> refreshGameBoard()));
+        this.timeline.setCycleCount(Animation.INDEFINITE);
+
+        this.pauseManager = new PauseManager();
     }
 
     /**
      * Starts a new game and a timer to refresh the game board.
-     * <p>
-     * It is important to call the {@link #stopAnimation()} method when the game is over,
-     * so that the timer does not continue to run in the background.
      */
     public void startGame() {
-        pause.setOnFinished(e -> timeline.play());
+        pauseManager.pauseGame(timeline::play);
 
         initializeBoardObjects();
         initializeEvents();
 
         gameBoardCanvas.requestFocus();
-        
-        this.score=0;
 
-        this.foodsEatenSinceLastSpecialFood=0;
-        
+        this.score = 0;
         StateManager.getScoreBoard().drawCountdownTimer();
         StateManager.getScoreBoard().drawScoreBoard(this.getScore());
 
         SoundFX.playIntroSound();
 
         timeline.pause();
-        pause.play();
+        pauseManager.pauseGame(timeline::play);
     }
 
     /**
@@ -155,42 +124,34 @@ public class GameBoard {
         timeline.stop();
     }
 
+    /**
+     * Ends the current game, prompts for highscore if applicable.
+     */
     public void endCurrentGame() {
-        pause.setOnFinished(e -> {
-            try {
-                timeline.play();
-                StateManager.switchToGameOverView();
-            } catch (IOException ex) {
-                LOG.error("Error switching to the GameOver view");
-                ex.printStackTrace();
-            }
-        });
 
         SoundFX.playGameOverSound();
-
         this.stopAnimation();
-        if(score != 0) {
+
+        if (score != 0) {
             promptUserForInput();
-            try {
-                timeline.play();
-                StateManager.switchToGameOverView();
-            } catch (IOException ex) {
-                LOG.error("Error switching to the GameOver view");
-                ex.printStackTrace();
-            }
         }
-        else pause.play();
+
+        try {
+            timeline.play();
+            StateManager.switchToGameOverView();
+        } catch (IOException ex) {
+            LOG.error("Error switching to the GameOver view", ex);
+        }
     }
 
     /**
-     * Add objects which should be part of the game here.
+     * Initializes all game objects.
      */
     private void initializeBoardObjects() {
         snake = new Snake(INITIAL_SIZE, INITIAL_DIRECTION);
         innerWall = generateRandomWall();
-        regularFood = new Food(snake, innerWall, null, false, previousRegularFoodType);
-        // range 5 - 10
-        foodsToEatUntilNextSpecialFood=(int) (5 + (Math.random() * 6));
+        foodManager = new FoodManager(snake, innerWall);
+        regularFood = foodManager.getRegularFood();
         drawGameBoard(gc);
         drawWalls(gc);
         drawSnake(gc);
@@ -198,42 +159,36 @@ public class GameBoard {
     }
 
     /**
-     * Generates a random wall inside the gameboard with a size smaller than 5
-     * It checks the snake's position to avoid creating the wall over it
+     * Generates a random wall inside the gameboard.
      *
-     * @return a wall with random position or null if the random generated length is 0
+     * @return a Wall object or null if no wall is generated
      */
     private Wall generateRandomWall() {
         Random rand = new Random();
         int wallLength = rand.nextInt(5);
-        if (wallLength == 0) return null;
+        if (wallLength == 0)
+            return null;
 
-        int randomX = getRandomWallPosition(rand, wallLength, true);
-        int randomY = getRandomWallPosition(rand, wallLength, false);
+        final Position pos  = new Position(getRandomWallPosition(rand, wallLength, true),
+                                           getRandomWallPosition(rand, wallLength, false));
 
-        return new Wall(rand.nextBoolean(), randomX, randomY, wallLength);
+        return new Wall(rand.nextBoolean(), pos, wallLength);
     }
 
     /**
-     * This method generates a random coordinate for a wall on the board.
-     * It adds the snake's position to a Set of exclusions to avoid creating the wall on top of it
+     * Generates a random position for a wall.
      *
-     * @param rand         - the random generator
-     * @param wallLength   - the total wall length
-     * @param isHorizontal - the type of coordinate to generate
-     * @return a random int for the starting position of the wall
+     * @param rand         Random instance
+     * @param wallLength   Length of the wall
+     * @param isHorizontal Determines if the wall is horizontal
+     * @return a valid random position
      */
     private int getRandomWallPosition(Random rand, int wallLength, boolean isHorizontal) {
         int range = GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * (wallLength + 2);
-
         Set<Integer> exclusions = new HashSet<>();
-        int segmentPosition;
+
         for (Position segment : snake.getSegments()) {
-            if (isHorizontal) {
-                segmentPosition = segment.getX();
-            } else {
-                segmentPosition = segment.getY();
-            }
+            int segmentPosition = isHorizontal ? segment.getX() : segment.getY();
             exclusions.add(segmentPosition);
             for (int i = 0; i < wallLength; i++) {
                 exclusions.add(segmentPosition + i * OBJECT_SIZE_MEDIUM);
@@ -241,21 +196,20 @@ public class GameBoard {
             }
         }
 
-        exclusions.add(0);
-        exclusions.add(OBJECT_SIZE_MEDIUM);
-        exclusions.add(OBJECT_SIZE_MEDIUM * 2);
+        exclusions.addAll(Arrays.asList(0, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM * 2));
 
-        int random = rand.nextInt(range) / OBJECT_SIZE_MEDIUM * OBJECT_SIZE_MEDIUM;
-        while (exclusions.contains(random)) {
-            random = rand.nextInt(range) / OBJECT_SIZE_MEDIUM * OBJECT_SIZE_MEDIUM;
-        }
+        int random;
+        do {
+            random = (rand.nextInt(range) / OBJECT_SIZE_MEDIUM) * OBJECT_SIZE_MEDIUM;
+        } while (exclusions.contains(random));
+
         return random;
     }
 
     /**
-     * Method to draw the checkerboard pattern on the GraphicsContext
+     * Draws the game board with a checkerboard pattern.
      *
-     * @param gc GraphicsContext gc used for all BoardObjects
+     * @param gc GraphicsContext used for drawing
      */
     private void drawGameBoard(GraphicsContext gc) {
         for (int i = 0; i < GAME_BOARD_SIZE_MEDIUM; i++) {
@@ -270,21 +224,29 @@ public class GameBoard {
         }
     }
 
+    /**
+     * Draws a food item on the game board.
+     *
+     * @param gc   GraphicsContext used for drawing
+     * @param food The food item to draw
+     */
     private void drawFood(GraphicsContext gc, Food food) {
+        if (food == null)
+            return;
         Image foodImg = new Image("graphics/food/" + food.getFoodType());
-        gc.drawImage(foodImg, food.getLocation().getX(), food.getLocation().getY(), OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM);
+        gc.drawImage(foodImg, food.getLocation().getX(), food.getLocation().getY(), OBJECT_SIZE_MEDIUM,
+                OBJECT_SIZE_MEDIUM);
     }
 
+    /**
+     * Draws the snake on the game board.
+     *
+     * @param gc GraphicsContext used for drawing
+     */
     private void drawSnake(GraphicsContext gc) {
         gc.setFill(Color.BLUE);
         Position headPosition = snake.getSegments().get(0);
-        Image head = snakeHeadUp;
-
-        switch (snake.getDirection()) {
-            case RIGHT -> head = snakeHeadRight;
-            case DOWN -> head = snakeHeadDown;
-            case LEFT -> head = snakeHeadLeft;
-        }
+        Image head = getSnakeHeadImage();
 
         gc.drawImage(head, headPosition.getX(), headPosition.getY(), OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM);
 
@@ -294,225 +256,243 @@ public class GameBoard {
         }
     }
 
+    /**
+     * Retrieves the appropriate snake head image based on the current direction.
+     *
+     * @return Image of the snake's head
+     */
+    private Image getSnakeHeadImage() {
+        return switch (snake.getDirection()) {
+            case RIGHT -> snakeHeadRight;
+            case DOWN -> snakeHeadDown;
+            case LEFT -> snakeHeadLeft;
+            default -> snakeHeadUp;
+        };
+    }
+
+    // Füge die folgende Methode hinzu oder passe die vorhandene an
+
+    /**
+     * Überprüft, ob der Kopf der Schlange sich auf dem Essen befindet.
+     *
+     * @param food Das zu überprüfende Essenobjekt.
+     * @return true, wenn der Schlange auf dem Essen ist, sonst false.
+     */
     private boolean checkIfSnakeHeadIsOnFood(Food food) {
-        return (snake.getSegments().get(0).getX() == food.getLocation().getX() &&
-                snake.getSegments().get(0).getY() == food.getLocation().getY());
+        if (food == null)
+            return false;
+        Position snakeHead = snake.getSegments().get(0);
+        Position foodPos = food.getLocation();
+        boolean isCollision = snakeHead.equals(foodPos);
+        if (isCollision) {
+            LOG.info("Schlange hat das Essen an Position ({}, {}) gegessen.", foodPos.getX(), foodPos.getY());
+        } else {
+            LOG.debug("Schlangen-Kopf: ({}, {}), Essen-Position: ({}, {})",
+                    snakeHead.getX(), snakeHead.getY(), foodPos.getX(), foodPos.getY());
+        }
+        return isCollision;
     }
 
     /**
-     * This method centralizes the methods that draw walls in the game - the perimeter ones and walls that are inside
-     * the game area and used as obstacles, if any
+     * Draws all walls on the game board.
      *
-     * @param gc the current graphics context
+     * @param gc GraphicsContext used for drawing
      */
     private void drawWalls(GraphicsContext gc) {
         drawPerimeterWalls(gc);
-        if (innerWall != null) drawInnerWalls(gc);
+        if (innerWall != null)
+            drawInnerWalls(gc);
     }
 
     /**
-     * This method only draws the perimeter walls, without using the Wall class, to avoid overhead for collision check
-     * Collision with these walls should simply be a check if the snake is outside the gameboard area, subtracting
-     * the wall's thickness
+     * Draws the perimeter walls.
      *
-     * @param gc the current graphics context
+     * @param gc GraphicsContext used for drawing
      */
     private void drawPerimeterWalls(GraphicsContext gc) {
-        //Upper wall
         for (int i = 0; i < GAME_BOARD_SIZE_MEDIUM; i += OBJECT_SIZE_MEDIUM) {
-            gc.drawImage(wallPattern, i, 0, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM);
-        }
-
-        //Bottom wall - we subtract 2*OBJECT_SIZE_MEDIUM from the Y position to make it visible inside the Gameboard area
-        // and to account for the Menu bar
-        for (int i = 0; i < GAME_BOARD_SIZE_MEDIUM; i += OBJECT_SIZE_MEDIUM) {
-            gc.drawImage(wallPattern, i, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM);
-        }
-
-        //Left wall
-        for (int i = 0; i < GAME_BOARD_SIZE_MEDIUM; i += OBJECT_SIZE_MEDIUM) {
-            gc.drawImage(wallPattern, 0, i, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM);
-        }
-
-        //Right wall - we subtract OBJECT_SIZE_MEDIUM from the X position to make it visible inside the Gameboard area
-        for (int i = 0; i < GAME_BOARD_SIZE_MEDIUM; i += OBJECT_SIZE_MEDIUM) {
-            gc.drawImage(wallPattern, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM, i, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM);
+            gc.drawImage(wallPattern, i, 0, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM); // Upper
+            gc.drawImage(wallPattern, i, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM,
+                    OBJECT_SIZE_MEDIUM); // Bottom
+            gc.drawImage(wallPattern, 0, i, OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM); // Left
+            gc.drawImage(wallPattern, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM, i, OBJECT_SIZE_MEDIUM,
+                    OBJECT_SIZE_MEDIUM); // Right
         }
     }
 
+    /**
+     * Draws the inner walls.
+     *
+     * @param gc GraphicsContext used for drawing
+     */
     private void drawInnerWalls(GraphicsContext gc) {
-        for (int i = 0; i < innerWall.getSegments().size(); i++) {
-            Position wallSegment = innerWall.getSegments().get(i);
+        for (Position wallSegment : innerWall.getSegments()) {
             gc.drawImage(wallPattern, wallSegment.getX(), wallSegment.getY(), OBJECT_SIZE_MEDIUM, OBJECT_SIZE_MEDIUM);
         }
     }
 
     /**
-     * Initializes javafx events.
-     * <p>
-     * javafx events are events which are triggered by the user.
-     * For example a button click or a key press.
+     * Initializes all key event handlers.
      */
     private void initializeEvents() {
-        // Checkout https://www.w3schools.com/java/java_lambda.asp for more information about lambdas.
-        // Basically the event gets passed as a parameter and can be used inside the parentheses.
         gameBoardCanvas.setOnKeyPressed(event -> {
             switch (event.getCode()) {
-                case UP -> {
-                    if (!isGamePaused && snake.getDirection() != DOWN && snake.isPositionUpdated()) {
-                        snake.setDirection(UP);
-                        snake.setPositionUpdated(false);
-                    }
-                }
-                case DOWN -> {
-                    if (!isGamePaused && snake.getDirection() != UP && snake.isPositionUpdated()) {
-                        snake.setDirection(DOWN);
-                        snake.setPositionUpdated(false);
-                    }
-                }
-                case LEFT -> {
-                    if (!isGamePaused && snake.getDirection() != RIGHT && snake.isPositionUpdated()) {
-                        snake.setDirection(LEFT);
-                        snake.setPositionUpdated(false);
-                    }
-                }
-                case RIGHT -> {
-                    if (!isGamePaused && snake.getDirection() != LEFT && snake.isPositionUpdated()) {
-                        snake.setDirection(RIGHT);
-                        snake.setPositionUpdated(false);
-                    }
-                }
+                case UP -> handleDirectionChange(UP, DOWN);
+                case DOWN -> handleDirectionChange(DOWN, UP);
+                case LEFT -> handleDirectionChange(LEFT, RIGHT);
+                case RIGHT -> handleDirectionChange(RIGHT, LEFT);
                 case P -> {
-                    if (snake.isAlive()) isGamePaused = !isGamePaused;
-                }
-                case ESCAPE -> {
                     if (snake.isAlive()) {
-                        isGamePaused = true;
-
-                        Alert alert = new Alert(Alert.AlertType.WARNING, """
-                                If you return to the Start-Screen while playing the game,
-                                you will lose all points.
-                                Do you really want to return to the Start-Screen?""", ButtonType.YES, ButtonType.NO);
-                        alert.showAndWait();
-
-                        if (alert.getResult() == ButtonType.YES) {
-                            this.stopAnimation();
-
-                            try {
-                                StateManager.switchToStartView();
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-
-                        this.isGamePaused = false;
+                        isGamePaused = !isGamePaused;
                     }
                 }
+                case ESCAPE -> handleEscape();
+                default -> throw new IllegalArgumentException("Unexpected value: " + event.getCode());
             }
         });
     }
 
     /**
-     * This method prompts the user to input their name at the end of the game.
-     * This allows to keep track of recent high scores.
+     * Handles the change of direction for the snake.
+     *
+     * @param newDir      The new direction to set
+     * @param oppositeDir The opposite direction to prevent reversing
+     */
+    private void handleDirectionChange(Direction newDir, Direction oppositeDir) {
+        if (!isGamePaused && snake.getDirection() != oppositeDir && snake.isPositionUpdated()) {
+            snake.setDirection(newDir);
+            snake.setPositionUpdated(false);
+        }
+    }
+
+    /**
+     * Handles the escape key press to potentially exit to the start screen.
+     */
+    private void handleEscape() {
+        if (snake.isAlive()) {
+            isGamePaused = true;
+
+            Alert alert = new Alert(Alert.AlertType.WARNING, """
+                    If you return to the Start-Screen while playing the game,
+                    you will lose all points.
+                    Do you really want to return to the Start-Screen?""", ButtonType.YES, ButtonType.NO);
+            alert.showAndWait();
+
+            if (alert.getResult() == ButtonType.YES) {
+                this.stopAnimation();
+                try {
+                    StateManager.switchToStartView();
+                } catch (IOException e) {
+                    LOG.error("Error switching to the Start view", e);
+                }
+            }
+
+            isGamePaused = false;
+        }
+    }
+
+    /**
+     * Prompts the user to input their name for the highscore.
      */
     private void promptUserForInput() {
-        String name = "";
-
         TextInputDialog inputPlayerName = new TextInputDialog();
         inputPlayerName.setHeaderText("Please enter your name:");
         inputPlayerName.setContentText("Name: ");
 
         Optional<String> result = inputPlayerName.showAndWait();
-        if (result.isPresent()) {
-            name = result.get().replace("%","");
-        }
+        String name = result.map(s -> s.replace(":", "")).orElse("Anonymous");
 
         Player player = new Player(name, score);
         HighscoreService.savePlayerHighscore(player);
     }
 
     /**
-     * Here everything happens that needs a refresh.
-     * For example the movement of the snake or collision detection.
-     * <p>
-     * The method is automatically called by a timer after n milliseconds.
-     * <p>
-     * Platform.runLater - Since we update a GUI component from a non-GUI thread, we need to put our update in a queue,
-     * and it will be handled by the GUI thread as soon as possible.
+     * Aktualisiert und zeichnet die Spieloberfläche neu.
      */
     private void refreshGameBoard() {
         if (isGamePaused) {
-            this.gc.setFill(Color.WHITE);
-            this.gc.fillRect(OBJECT_SIZE_MEDIUM * 0.3, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * 0.9, OBJECT_SIZE_MEDIUM * 2.7, OBJECT_SIZE_MEDIUM * 0.8);
-            this.gc.setFont(new Font(OBJECT_SIZE_MEDIUM * 0.6));
-            this.gc.setFill(Color.BLACK);
-            this.gc.fillText("Paused!", OBJECT_SIZE_MEDIUM * 0.6, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * 0.3, GAME_BOARD_SIZE_MEDIUM);
+            displayPausedState();
             return;
         }
 
         Platform.runLater(() -> {
             try {
                 snake.updateSnakePosition();
+                LOG.debug("Schlangen-Position aktualisiert. Neuer Kopf: ({}, {})",
+                        snake.getSegments().get(0).getX(), snake.getSegments().get(0).getY());
                 snake.checkForCollisions(innerWall);
                 if (snake.isAlive()) {
-                    // If the snake ate the food with the last "movement" a new food element gets created.
-                    if (regularFood == null) {
-                            regularFood = new Food(snake, innerWall, null, false, previousRegularFoodType);
-                            previousRegularFoodType = regularFood.getFoodType();
-                        }
-                    if (foodsToEatUntilNextSpecialFood == foodsEatenSinceLastSpecialFood && specialFood == null){
-                            specialFood = new Food(snake, innerWall, regularFood, true, previousSpecialFoodType);
-                            previousSpecialFoodType = specialFood.getFoodType();
-                    }
+                    handleFoodGeneration();
                     gc.clearRect(0, 0, gameBoardCanvas.getWidth(), gameBoardCanvas.getHeight());
                     drawGameBoard(gc);
                     drawWalls(gc);
                     drawSnake(gc);
 
-                /*
-                  If the Snake Head moved onto the Food Element, the snake gets longer [via Snake.eats()]
-                  If that happens, we don't want the food to be printed.
-                  food gets assigned "null", because the next food element should not be created before the Snake has moved
-                  one more time.
-                       This could otherwise lead to the scenario, where the food randomly gets spawned to location, which the snake
-                       would move onto next.
-                           Which would mean, that the food is never shown, but the snake would appear to get longer for no reason.
-                 */
-                    if (checkIfSnakeHeadIsOnFood(regularFood)) {
-                        snake.eats(regularFood);
-                        score += regularFood.getScoreValue();
-                        foodsEatenSinceLastSpecialFood++;
-                        StateManager.getScoreBoard().drawScoreBoard(this.getScore());
-                        regularFood = null;
-                    } else drawFood(gc, regularFood);
-                    if (specialFood!=null) {
-                        if (checkIfSnakeHeadIsOnFood(specialFood)) {
-                            snake.eats(specialFood);
-                            score += specialFood.getScoreValue();
-                            StateManager.getScoreBoard().drawScoreBoard(this.getScore());
-                            resetSpecialFoodConditions();
-                        } else {
-                            specialFood.decreaseSpecialFoodTimeToLive();
-                            if(specialFood.getSpecialFoodTimeToLive()==0){
-                                resetSpecialFoodConditions();
-                            }
-                            else drawFood(gc, specialFood);
-                        }
-                    }
+                    handleFoodConsumption();
                 } else {
                     endCurrentGame();
                 }
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOG.error("Fehler beim Aktualisieren des Spielbretts", ex);
             }
         });
     }
 
-    private void resetSpecialFoodConditions(){
-        specialFood = null;
-        foodsEatenSinceLastSpecialFood=0;
-        foodsToEatUntilNextSpecialFood=(int)(3 + (Math.random() * 4));
+    /**
+     * Displays the paused state on the game board.
+     */
+    private void displayPausedState() {
+        gc.setFill(Color.WHITE);
+        gc.fillRect(OBJECT_SIZE_MEDIUM * 0.3, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * 0.9,
+                OBJECT_SIZE_MEDIUM * 2.7, OBJECT_SIZE_MEDIUM * 0.8);
+        gc.setFont(new Font(OBJECT_SIZE_MEDIUM * 0.6));
+        gc.setFill(Color.BLACK);
+        gc.fillText("Paused!", OBJECT_SIZE_MEDIUM * 0.6, GAME_BOARD_SIZE_MEDIUM - OBJECT_SIZE_MEDIUM * 0.3,
+                GAME_BOARD_SIZE_MEDIUM);
     }
 
+    /**
+     * Handles the generation of new food items.
+     */
+    private void handleFoodGeneration() {
+        if (foodManager.getRegularFood() == null) {
+            foodManager.generateRegularFood();
+        }
+        if (foodManager.shouldGenerateSpecialFood()) {
+            foodManager.generateSpecialFood();
+        }
+    }
+
+    /**
+     * Handles the consumption of food by the snake.
+     */
+    private void handleFoodConsumption() {
+        Food regular = foodManager.getRegularFood();
+        if (checkIfSnakeHeadIsOnFood(regular)) {
+            snake.eats(regular);
+            score += regular.getScoreValue();
+            foodManager.handleFoodConsumption(regular.getScoreValue());
+            StateManager.getScoreBoard().drawScoreBoard(this.getScore());
+            regularFood = null;
+        } else {
+            drawFood(gc, regular);
+        }
+
+        Food special = foodManager.getSpecialFood();
+        if (special != null) {
+            if (checkIfSnakeHeadIsOnFood(special)) {
+                snake.eats(special);
+                score += special.getScoreValue();
+                StateManager.getScoreBoard().drawScoreBoard(this.getScore());
+                foodManager.resetSpecialFood();
+            } else {
+                special.decreaseSpecialFoodTimeToLive();
+                if (special.getSpecialFoodTimeToLive() == 0) {
+                    foodManager.resetSpecialFood();
+                } else {
+                    drawFood(gc, special);
+                }
+            }
+        }
+    }
 }

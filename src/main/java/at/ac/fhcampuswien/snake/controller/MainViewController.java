@@ -12,14 +12,12 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class MainViewController {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MainViewController.class);
+    private static final String LOGO_SRC = "graphics/snake_logo.jpg";
 
     protected Stage stage = null;
     @FXML
@@ -39,8 +37,8 @@ public class MainViewController {
 
 
     public void initialize() {
-        Image logo = new Image("graphics/snake_logo.jpg");
-        this.logo.setImage(logo);
+        Image logoImage = new Image(LOGO_SRC);
+        this.logo.setImage(logoImage);
         this.logo.setPreserveRatio(true);
         this.logo.setSmooth(true);
         this.textBox.setText("\n\n");
@@ -64,6 +62,7 @@ public class MainViewController {
             case "Easy" -> StateManager.difficulty = Constants.Difficulty.EASY;
             case "Medium" -> StateManager.difficulty = Constants.Difficulty.MEDIUM;
             case "Hard" -> StateManager.difficulty = Constants.Difficulty.HARD;
+            default -> StateManager.difficulty = Constants.Difficulty.MEDIUM;
         }
         StateManager.switchToGameView();
     }

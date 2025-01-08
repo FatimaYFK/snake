@@ -5,143 +5,128 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.ArrayList;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static at.ac.fhcampuswien.snake.util.Constants.HIGHSCORE_SEPARATOR;
-
 /**
- * Utility Class to read from and save to a text file that stores the high scores.
+ * Utility class to manage high scores by reading from and writing to a text file.
  */
 public class HighscoreService {
 
-    private final static Logger LOG = LoggerFactory.getLogger(HighscoreService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HighscoreService.class);
+    private static final int MAX_HIGHSCORES = 5;
+    private static final String HIGHSCORES_FILE_PATH = "src/main/resources/highscores.txt";
+    private static final String HIGHSCORE_SEPARATOR = ":"; // Assuming ':' as separator
 
     /**
-     * This method looks for an existing high score file on disk. If it does not exist - it creates one.
+     * Retrieves the high scores from the file.
      *
-     * @return file object that points to the file on disk.
-     * @throws IOException if the program can not read from file / process gets interrupted.
+     * @return List of top players sorted by score in descending order.
      */
-    private static File getHighscoresFile() throws IOException {
-        String path = "src/main/resources/highscores.txt";
-        File highscoreFile = new File(path);
-        highscoreFile.createNewFile();
-        return highscoreFile;
-    }
-
-    /**
-     * This method reads every line from the file and stores it in a list.
-     *
-     * @param file The file to read from.
-     * @return List of strings where each row represents a line in the file.
-     */
-    private static List<String> getFileContent(File file) throws IOException{
-        List<String> ret = new ArrayList<>();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-
-            while ((line = br.readLine()) != null) {
-                ret.add(line);
-            }
-
-        } catch (IOException e) {
-            LOG.error("Error reading the file content");
-            throw new IOException(e);
-        }
-
-        return ret;
-    }
-
-    /**
-     * This method reads the entries in the saved file and splits it according to the defined separator.
-     *
-     * @param list The list that contains the previous high score data.
-     * @return List of players and there score.
-     */
-    private static List<Player> getPlayerFromList(List<String> list) {
-        List<Player> ret = new ArrayList<>();
-
-        if (!list.isEmpty()) {
-            for (String line : list) {
-                String[] parts = line.split(HIGHSCORE_SEPARATOR);
-                Player player = new Player(parts[0], Integer.parseInt(parts[1]));
-                ret.add(player);
-            }
-        }
-        return ret;
-    }
-
     public static List<Player> getSavedPlayerList() {
-        List<Player> ret = null;
-
         try {
-            File highscoreFile = getHighscoresFile();
-            List<String> fileContent = getFileContent(highscoreFile);
-            ret = getPlayerFromList(fileContent);
-        } catch (IOException ex) {
-            LOG.error("Error getting the saved players list");
-            ex.printStackTrace();
+            ensureHighscoresFileExists();
+            return Files.lines(Paths.get(HIGHSCORES_FILE_PATH))
+                    .map(HighscoreService::parsePlayer)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .sorted(Comparator.comparingInt(Player::getScore).reversed())
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            LOG.error("Error retrieving high scores", e);
+            return List.of();
         }
-        return ret;
     }
 
     /**
-     * This method checks if there are past high scores saved in the high scores file.
-     * If there are no entries, it will write the name of the player in it.
-     * If there are more than five high scores saved, only the five highest scores will be displayed and saved.
-     * An error message will be created if the file can not be read or the path to it is wrong.
+     * Saves a player's high score, maintaining only the top five scores.
      *
-     * @param currentPlayer The player to save the current player.
+     * @param player The player to save.
      */
-    public static void savePlayerHighscore(Player currentPlayer) {
-
+    public static void savePlayerHighscore(Player player) {
         try {
-            File highscoreFile = getHighscoresFile();
-            List<String> fileContent = getFileContent(highscoreFile);
-            List<Player> players = getPlayerFromList(fileContent);
+            ensureHighscoresFileExists();
+            List<Player> players = getSavedPlayerList();
 
             if (!players.isEmpty()) {
-                players.add(currentPlayer);
-
+                players.add(player);
                 players = players.stream()
                         .sorted(Comparator.comparingInt(Player::getScore).reversed())
                         .collect(Collectors.toList());
-
-                if (players.size() > 5) {
+                if (players.size() > MAX_HIGHSCORES) {
                     Player previousLastPlayer = players.get(players.size() - 2);
                     Player lastPlayer = players.get(players.size() - 1);
 
-                    if (lastPlayer.equals(currentPlayer) &&
+                    if (lastPlayer.equals(player) &&
                             lastPlayer.getScore() == previousLastPlayer.getScore()) {
                         players.remove(previousLastPlayer);
                     } else players.remove(lastPlayer);
                 }
             } else {
-                players.add(currentPlayer);
+                players.add(player);
             }
-
-            try (FileWriter fileWriter = new FileWriter(highscoreFile)) {
-                fileWriter.write("");
-                StringBuilder sb = new StringBuilder();
-                for (Player player : players) {
-                    sb.append(player.getName());
-                    sb.append(HIGHSCORE_SEPARATOR);
-                    sb.append(player.getScore());
-
-                    fileWriter.append(sb);
-                    fileWriter.append(System.lineSeparator());
-                    sb.setLength(0);
-                }
-            }
-
-        } catch (IOException ex) {
-            LOG.error("Error while saving the players list");
-            ex.printStackTrace();
+            writePlayersToFile(players);
+        } catch (IOException e) {
+            LOG.error("Error saving high score for player: " + player.getName(), e);
         }
     }
 
+    /**
+     * Ensures that the high scores file exists; creates it if it does not.
+     *
+     * @throws IOException if the file cannot be created.
+     */
+    private static void ensureHighscoresFileExists() throws IOException {
+        File file = new File(HIGHSCORES_FILE_PATH);
+        if (!file.exists()) {
+            boolean created = file.createNewFile();
+            if (!created) {
+                throw new IOException("Failed to create highscore file at " + HIGHSCORES_FILE_PATH);
+            }
+        }
+    }
+
+    /**
+     * Parses a line from the high scores file into a Player object.
+     *
+     * @param line The line to parse.
+     * @return Optional containing the Player if parsing is successful.
+     */
+    private static Optional<Player> parsePlayer(String line) {
+        String[] parts = line.split(HIGHSCORE_SEPARATOR);
+        if (parts.length == 2) {
+            try {
+                String name = parts[0].trim();
+                int score = Integer.parseInt(parts[1].trim());
+                return Optional.of(new Player(name, score));
+            } catch (NumberFormatException e) {
+                LOG.warn("Invalid score format in line: {}", line, e);
+            }
+        } else {
+            LOG.warn("Invalid line format: {}", line);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Writes the list of players to the high scores file.
+     *
+     * @param players The list of players to write.
+     * @throws IOException if an I/O error occurs.
+     */
+    private static void writePlayersToFile(List<Player> players) throws IOException {
+        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(HIGHSCORES_FILE_PATH))) {
+            for (Player player : players) {
+                writer.write(player.getName() + HIGHSCORE_SEPARATOR + player.getScore());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            LOG.error("Error writing high scores to file", e);
+            throw e;
+        }
+    }
 }
