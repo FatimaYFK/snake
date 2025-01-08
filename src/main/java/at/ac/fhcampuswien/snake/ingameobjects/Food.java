@@ -3,7 +3,9 @@ package at.ac.fhcampuswien.snake.ingameobjects;
 import at.ac.fhcampuswien.snake.util.Constants;
 import at.ac.fhcampuswien.snake.util.StateManager;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 
 public class Food {
 
@@ -25,7 +27,7 @@ public class Food {
 
         this.position = calculateFreeRandomPositionOnGameBoard(snake, wall, currentlyExistingRegularFood);
 
-        this.scoreValue =  calculateScoreValue(StateManager.difficulty, scoreWeight);
+        this.scoreValue =  calculateScoreValue(scoreWeight);
     }
 
     //MM20250106: dummy, so we can write SpecialFood more elegantly
@@ -60,43 +62,37 @@ public class Food {
     }
 
     Position calculateFreeRandomPositionOnGameBoard(Snake snake, Wall wall, Food currentlyExistingRegularFood) {
-        boolean isTargetFieldFree;
+        boolean isTargetFieldFree = true;
         Position currentPosition;
 
         do {
-            isTargetFieldFree = true;
             currentPosition = new Position();
 
             // Check if calculated Position is inhibited by the snake
-            int i = 0;
-            do {
-                if (snake.getSegments().get(i).equals(currentPosition)) {
-                    isTargetFieldFree = false;
-                }
-                i++;
-            } while (isTargetFieldFree && i < snake.getSegments().size());
+            isTargetFieldFree = checkPositionFree(snake.getSegments(), currentPosition);
 
             // Check if calculated Position is inhibited by the wall
-            if (wall != null && isTargetFieldFree) {
-                int j = 0;
-                do {
-                    if (wall.getSegments().get(j).equals(currentPosition)) {
-                        isTargetFieldFree = false;
-                    }
-                    j++;
-                } while (isTargetFieldFree && j < wall.getSegments().size());
+            if (isTargetFieldFree) {
+                isTargetFieldFree = checkPositionFree(wall.getSegments(), currentPosition);
             }
 
             // Check if currently existing regular Food is on desired Position
-            if (isSpecialFood() && currentlyExistingRegularFood != null && isTargetFieldFree) {
-                if (currentlyExistingRegularFood.position.equals(currentPosition)) {
+            if (isSpecialFood() && currentlyExistingRegularFood != null && isTargetFieldFree && currentlyExistingRegularFood.position.equals(currentPosition)) {
                     isTargetFieldFree = false;
-                }
             }
 
         } while (!isTargetFieldFree);
 
         return currentPosition;
+    }
+
+    boolean checkPositionFree(List<Position> objectSegments, Position currentPosition) {
+        for (int i = 0; i < objectSegments.size(); i++) {
+            if (objectSegments.get(i).equals(currentPosition)) {
+                return false; // conflict found, not free
+            }
+        }
+        return true;
     }
 
     int translateIntoFoodValue(Constants.Difficulty difficulty) {
@@ -116,14 +112,14 @@ public class Food {
     {
         String foodType = "";
         do {
-            int randomFoodTypeNumber = (int) (Math.random() * eligibleFoodTypes.length);
+            int randomFoodTypeNumber = new Random().nextInt(eligibleFoodTypes.length);
             foodType = eligibleFoodTypes[randomFoodTypeNumber];
         } while (Objects.equals(foodType, previousFoodType));
 
         return foodType;
     }
 
-    int calculateScoreValue(Constants.Difficulty difficulty, int scoreWeight) {
+    int calculateScoreValue(int scoreWeight) {
         return scoreWeight * translateIntoFoodValue(StateManager.difficulty);
     }
 }
