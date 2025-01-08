@@ -24,7 +24,7 @@ import static at.ac.fhcampuswien.snake.util.Constants.*;
 public class StateManager {
     private static Stage stage = null;
 
-    public static Difficulty difficulty = Difficulty.MEDIUM;
+    public static Difficulty difficulty;
 
     private static GameBoard gameBoard;
 

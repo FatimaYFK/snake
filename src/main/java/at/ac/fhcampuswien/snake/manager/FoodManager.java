@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static at.ac.fhcampuswien.snake.util.Constants.*;
 
@@ -30,7 +31,8 @@ public class FoodManager {
     private int foodsEatenSinceLastSpecialFood;
     private int foodsToEatUntilNextSpecialFood;
 
-    private static final int MAX_HIGHSCORES = 5;
+    private static final Integer SPECIAL_FOOD_RANGE_MIN = 5;
+    private static final Integer SPECIAL_FOOD_RANGE_MAX = 10;
 
     public FoodManager(Snake snake, Wall innerWall) {
         this.snake = snake;
@@ -46,7 +48,7 @@ public class FoodManager {
      * @return random integer between 5 and 10.
      */
     private int getRandomFoodsToEat() {
-        return 5 + new Random().nextInt(6); // 5 to 10      //MM20250106: magic number '5'!!!
+        return new Random().nextInt((SPECIAL_FOOD_RANGE_MAX - SPECIAL_FOOD_RANGE_MIN) + 1 ) + SPECIAL_FOOD_RANGE_MIN;
     }
 
     /**
