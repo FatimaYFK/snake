@@ -128,28 +128,19 @@ public class GameBoard {
      * Ends the current game, prompts for highscore if applicable.
      */
     public void endCurrentGame() {
-        pauseManager.pauseGame(() -> {
-            try {
-                timeline.play();
-                StateManager.switchToGameOverView();
-            } catch (IOException ex) {
-                LOG.error("Error switching to the GameOver view", ex);
-            }
-        });
 
         SoundFX.playGameOverSound();
         this.stopAnimation();
 
         if (score != 0) {
             promptUserForInput();
-            try {
-                timeline.play();
-                StateManager.switchToGameOverView();
-            } catch (IOException ex) {
-                LOG.error("Error switching to the GameOver view", ex);
-            }
-        } else {
-            pauseManager.pauseGame(timeline::play);
+        }
+
+        try {
+            timeline.play();
+            StateManager.switchToGameOverView();
+        } catch (IOException ex) {
+            LOG.error("Error switching to the GameOver view", ex);
         }
     }
 
@@ -352,14 +343,7 @@ public class GameBoard {
                 case RIGHT -> handleDirectionChange(RIGHT, LEFT);
                 case P -> {
                     if (snake.isAlive()) {
-                        pauseManager.togglePause(() -> {
-                            if (!pauseManager.isGamePaused()) {
-                                timeline.play();
-                            } else {
-                                timeline.pause();
-                            }
-                            isGamePaused = pauseManager.isGamePaused();
-                        });
+                        isGamePaused = !isGamePaused;
                     }
                 }
                 case ESCAPE -> handleEscape();
@@ -416,7 +400,7 @@ public class GameBoard {
         inputPlayerName.setContentText("Name: ");
 
         Optional<String> result = inputPlayerName.showAndWait();
-        String name = result.map(s -> s.replace("%", "")).orElse("Anonymous");
+        String name = result.map(s -> s.replace(":", "")).orElse("Anonymous");
 
         Player player = new Player(name, score);
         HighscoreService.savePlayerHighscore(player);

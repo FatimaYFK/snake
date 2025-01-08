@@ -52,7 +52,7 @@ public class ScoreBoard {
         final int duration = 3;
 
         Timeline countdownTimeline = new Timeline();
-        countdownTimeline.setCycleCount(duration + 1);
+        countdownTimeline.setCycleCount(1);
 
         for (int i = duration; i >= 0; i--) {
             final int currentSecond = i;
@@ -70,7 +70,6 @@ public class ScoreBoard {
                     gc.fillText(timerText, 7, SCOREBOARD_HEIGHT / 2);
                 } else {
                     // Optionally, you can clear the timer or perform another action when countdown finishes
-                    gc.clearRect(0, 0, SCOREBOARD_WIDTH / 2, SCOREBOARD_HEIGHT);
                 }
             });
             countdownTimeline.getKeyFrames().add(keyFrame);

@@ -35,7 +35,6 @@ public class HighscoreService {
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .sorted(Comparator.comparingInt(Player::getScore).reversed())
-                    .limit(MAX_HIGHSCORES)
                     .collect(Collectors.toList());
         } catch (IOException e) {
             LOG.error("Error retrieving high scores", e);
@@ -52,14 +51,24 @@ public class HighscoreService {
         try {
             ensureHighscoresFileExists();
             List<Player> players = getSavedPlayerList();
-            players = players.stream()
-                    .filter(p -> !p.getName().equals(player.getName()))
-                    .collect(Collectors.toList());
-            players.add(player);
-            players = players.stream()
-                    .sorted(Comparator.comparingInt(Player::getScore).reversed())
-                    .limit(MAX_HIGHSCORES)
-                    .collect(Collectors.toList());
+
+            if (!players.isEmpty()) {
+                players.add(player);
+                players = players.stream()
+                        .sorted(Comparator.comparingInt(Player::getScore).reversed())
+                        .collect(Collectors.toList());
+                if (players.size() > MAX_HIGHSCORES) {
+                    Player previousLastPlayer = players.get(players.size() - 2);
+                    Player lastPlayer = players.get(players.size() - 1);
+
+                    if (lastPlayer.equals(player) &&
+                            lastPlayer.getScore() == previousLastPlayer.getScore()) {
+                        players.remove(previousLastPlayer);
+                    } else players.remove(lastPlayer);
+                }
+            } else {
+                players.add(player);
+            }
             writePlayersToFile(players);
         } catch (IOException e) {
             LOG.error("Error saving high score for player: " + player.getName(), e);
